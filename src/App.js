@@ -7,28 +7,185 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEdit, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
 import { Modal, ModalBody, ModalFooter, ModalHeader } from 'reactstrap';
 
-const url="https://localhost:4000";
+import ReactFullpage from '@fullpage/react-fullpage';
+const url="http://localhost:4000/";
 
 
 
 class App extends Component {
     state={
-        data:[]
+        data:[],
+        modalInsertar: false,
+        modalEliminar: false,
+        form:{
+            id: '',
+            nombre: '',
+            salario: '',
+            file: null,
+            tipoModal: ''
+        }
     }
+
+
     peticionGet=()=>{
         axios.get(url).then(response=>{
-            console.log(response.data);
+            this.setState({data: response.data});
+        }).catch(error=>{
+            console.log(error.message);
+        })
+    }
+    peticionPost=async()=>{
+        delete this.state.form.id;
+        await axios.post(url,this.state.form).then(response=>{
+            this.modalInsertar();
+            this.peticionGet();
+        }).catch(error=>{
+            console.log(error.message);
+        })
+    }
+    peticionPut=()=>{
+        axios.put(url+this.state.form.id, this.state.form).then(response=>{
+            this.modalInsertar();
+            this.peticionGet();
+        })
+    }
+
+    peticionDelete=()=>{
+        axios.delete(url+this.state.form.id).then(response=>{
+            this.setState({modalEliminar: false});
+            this.peticionGet();
+        })
+    }
+
+    modalInsertar=()=>{
+        this.setState({modalInsertar: !this.state.modalInsertar});
+    }
+
+    seleccionarEmpresa=(empresa)=>{
+        this.setState({
+            tipoModal: 'actualizar',
+            form: {
+                id: empresa.id,
+                nombre: empresa.nombre,
+                pais: empresa.pais,
+                capital_bursatil: empresa.capital_bursatil
+            }
         })
     }
     componentDidMount() {
      this.peticionGet();
     }
+    modalInsertar=()=>{
+        this.setState({modalInsertar: !this.state.modalInsertar});
+    }
+
+    handleChange= async e=>{
+        e.persist();
+         await this.setState({
+            form:{
+                ...this.state.form,
+                [e.target.name]: e.target.value
+
+            }
+        });
+
+
+        console.log(this.state.form);
+    }
+
+    handleFile(e){
+        let file = e.target.files[0]
+        this.setState({file: file})
+        console.log(file)
+    }
 
     render() {
+        const {form}=this.state;
         return (
-            <div>
+            <div className="App">
+                <br /><br /><br />
+
+
+                <button className="btn btn-success" onClick={()=>{this.modalInsertar()}}>Agregar Empresa</button>
+
+                <br /><br />
+                <table className="table ">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Sueldo</th>
+                        <th>Foto</th>
+                        <th>Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {this.state.data.map(empleado=>{
+                        return(
+                            <tr>
+                                <td>{empleado.id}</td>
+                                <td>{empleado.name}</td>
+                                <td>{empleado.salary}</td>
+                                <td><img src={empleado.img}  className="fotoCedula"/>;</td>
+                                <td>
+                                    <button className="btn btn-primary" onClick={()=>{this.seleccionarEmpresa(empleado); this.modalInsertar()}}><FontAwesomeIcon icon={faEdit}/></button>
+                                    {"   "}
+                                    <button className="btn btn-danger" onClick={()=>{this.seleccionarEmpresa(empleado); this.setState({modalEliminar: true})}}><FontAwesomeIcon icon={faTrashAlt}/></button>
+                                </td>
+                            </tr>
+                        )
+                    })}
+                    </tbody>
+                </table>
+
+                <Modal isOpen={this.state.modalInsertar}>
+                    <ModalHeader style={{display: 'block'}}>
+                        <span style={{float: 'right'}} onClick={()=>this.modalInsertar()}>x</span>
+                    </ModalHeader>
+                    <ModalBody>
+                        <div className="form-group">
+                            <label htmlFor="id">ID</label>
+                            <input className="form-control" type="text" name="id" id="id" readOnly onChange={this.handleChange} value={0}/>
+                            <br />
+                            <label htmlFor="nombre">Nombre</label>
+                            <input className="form-control" type="text" name="nombre" id="nombre" onChange={this.handleChange} value={form?form.nombre: ''}/>
+                            <br />
+                            <label htmlFor="nombre">Salario</label>
+                            <input className="form-control" type="text" name="salario" id="pais" onChange={this.handleChange} value={form?form.salario: ''}/>
+                            <br />
+                            <label htmlFor="capital_bursatil">Foto</label>
+                            <input className="form-control" type="file" name="file" id="capital_bursatil" onChange={this.handleChange} value={form?form.file:''}/>
+                        </div>
+                    </ModalBody>
+
+                    <ModalFooter>
+                        {this.state.tipoModal=='insertar'?
+                            <button className="btn btn-success" onClick={()=>this.peticionPost()}>
+                                Insertar
+                            </button>: <button className="btn btn-primary" onClick={()=>this.peticionPut()}>
+                                Actualizar
+                            </button>
+                        }
+                        <button className="btn btn-danger" onClick={()=>this.modalInsertar()}>Cancelar</button>
+                    </ModalFooter>
+                </Modal>
+
+
+                <Modal isOpen={this.state.modalEliminar}>
+                    <ModalBody>
+                        Estás seguro que deseas eliminar a la empresa {form && form.nombre}
+                    </ModalBody>
+                    <ModalFooter>
+                        <button className="btn btn-danger" onClick={()=>this.peticionDelete()}>Sí</button>
+                        <button className="btn btn-secundary" onClick={()=>this.setState({modalEliminar: false})}>No</button>
+                    </ModalFooter>
+                </Modal>
+
+
 
             </div>
+
+
         );
     }
 }
